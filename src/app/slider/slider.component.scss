@@ -1,0 +1,27 @@
+.slider-container {
+  position: relative;
+  display: flex;
+  height: 20px;
+  align-items: center;
+  width: 50%;
+  #track {
+    height: 10px;
+    width: 100%;
+    background-color: #e3042538;
+    border-radius: 25px;
+  }
+  #active-track {
+    position: absolute;
+    background-color: #e30425;
+    border-radius: 25px;
+    height: 10px;
+  }
+  #thumb {
+    position: absolute;
+    display: block;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background-color: #e30425;
+  }
+}

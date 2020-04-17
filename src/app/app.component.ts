@@ -6,5 +6,11 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  title = 'angular-slider';
+  count: number;
+
+  setCount(value) {
+    console.log("value ", value)
+    this.count = value
+  }
+  
 }
