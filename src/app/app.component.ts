@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { combineLatest } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -6,11 +7,11 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  count: number;
-
-  setCount(value) {
-    console.log("value ", value)
-    this.count = value
+  min = 10;
+  max = 50;
+  count: number = this.min;
+  setCount(value: number) {
+    this.count = value;
   }
-  
+
 }

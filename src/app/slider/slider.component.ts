@@ -1,50 +1,29 @@
-import { Component, OnInit, Output, EventEmitter, Input } from "@angular/core";
-import { fromEvent, defer, of, combineLatest, from, concat, Subscribable, Subscriber } from "rxjs";
-import {
-  takeUntil,
-  switchMap,
-  merge,
-  repeat,
-  map,
-  tap,
-  endWith,
-  takeWhile,
-  concatAll,
-  take,
-  first,
-  repeatWhen,
-  filter,
-  mergeMap,
-  startWith,
-  distinctUntilChanged,
-  distinct,
-  distinctUntilKeyChanged,
-  withLatestFrom,
-  debounceTime,
-  concatMap,
-  exhaustMap,
-  takeLast,
-  exhaust,
-  finalize,
-} from "rxjs/operators";
+import { Component, OnInit, Output, EventEmitter, Input, ViewChild, ElementRef, Renderer2, OnDestroy } from '@angular/core';
+import { fromEvent, merge, Subscription } from 'rxjs';
+import {takeUntil, switchMap, repeat, map, distinctUntilKeyChanged } from 'rxjs/operators';
 
 @Component({
-  selector: "app-slider",
-  templateUrl: "./slider.component.html",
-  styleUrls: ["./slider.component.scss"],
+  selector: 'app-slider',
+  templateUrl: './slider.component.html',
+  styleUrls: ['./slider.component.scss'],
 })
-export class SliderComponent implements OnInit {
-  constructor() { }
+export class SliderComponent implements OnInit, OnDestroy {
+  constructor(private renderer: Renderer2) { }
 
   @Output() value: EventEmitter<number> = new EventEmitter();
+  @ViewChild('track', { static: true }) track: ElementRef;
+  @ViewChild('activeTrack', { static: true }) activeTrack: ElementRef;
+  @ViewChild('thumb', { static: true }) thumb: ElementRef;
   @Input() min: number;
   @Input() max: number;
 
-  mouseEventToCoordinate = (mouseEvent, track, event) => {
+  private sliderSubscription: Subscription;
+
+  mouseEventToCoordinate = (mouseEvent: MouseEvent, track: HTMLElement) => {
     mouseEvent.preventDefault();
     const { left, right, width } = track.getBoundingClientRect();
 
-    const widthThumb = 25;
+    const widthThumb = this.thumb.nativeElement.clientWidth;
     const isLeft = mouseEvent.x - widthThumb / 2 <= left;
     const isRight = mouseEvent.x + widthThumb / 2 >= right;
     const position = mouseEvent.x - widthThumb / 2 - left;
@@ -52,44 +31,43 @@ export class SliderComponent implements OnInit {
 
     return {
       position: isLeft ? 0 : isRight ? rightPositionTrack : position,
-      trackWidth: width,
-      event
+      trackWidth: width
     };
-  };
+  }
 
   ngOnInit(): void {
-    const thumb = document.getElementById("thumb");
-    const track: HTMLElement = document.getElementById("track");
-    const activeTrack = document.getElementById("active-track");
-    const mouseUp = fromEvent(document, "mouseup")
+    const mouseUp = fromEvent(document, 'mouseup');
 
-    const mouseMove = fromEvent(document, "mousemove").pipe(
-      map((item) => this.mouseEventToCoordinate(item, track, 'mouseMove')),
+    const mouseMove = fromEvent(document, 'mousemove').pipe(
+      map((item: MouseEvent) => this.mouseEventToCoordinate(item, this.track.nativeElement)),
       distinctUntilKeyChanged('position')
-    )
-    const activeTrackClick = fromEvent(activeTrack, "click").pipe(
-      map((item) => this.mouseEventToCoordinate(item, track, 'activeTrack')),
     );
-    const trackClick = fromEvent(track, "click").pipe(
-      map((item) => this.mouseEventToCoordinate(item, track, 'trackClick')),
+    const activeTrackClick = fromEvent(this.activeTrack.nativeElement, 'click').pipe(
+      map((item: MouseEvent) => this.mouseEventToCoordinate(item, this.track.nativeElement)),
     );
-    const mouseDown = fromEvent(thumb, "mousedown");
+    const trackClick = fromEvent(this.track.nativeElement, 'click').pipe(
+      map((item: MouseEvent) => this.mouseEventToCoordinate(item, this.track.nativeElement)),
+    );
+    const mouseDown = fromEvent(this.thumb.nativeElement, 'mousedown').pipe(switchMap(() => mouseMove));
 
-    mouseDown
+    this.sliderSubscription = merge(mouseDown, trackClick, activeTrackClick)
       .pipe(
-        switchMap(() => mouseMove),
-        merge(trackClick, activeTrackClick),
         takeUntil(mouseUp),
         repeat(),
       )
       .subscribe((item: any) => {
-        console.log('wwwwwwwwwwwwwww', item);
-
-        const newX = (item.position / item.trackWidth) * 100;
-        activeTrack.style.width = (newX + 1).toString() + "%";
-        thumb.style.left = newX.toString() + "%";
-        this.value.emit(Math.round(this.min + (((item.position) / (item.trackWidth - 25))) * this.max))
+        const currentPosition = (item.position / item.trackWidth) * 100;
+        const activeTrackWith = ((item.position + this.thumb.nativeElement.clientWidth) / item.trackWidth) * 100;
+        const maxValue = this.max - this.min;
+        const value = Math.round(this.min + (item.position / (item.trackWidth - this.thumb.nativeElement.clientWidth)) * maxValue);
+        this.renderer.setStyle(this.thumb.nativeElement, 'left', currentPosition.toString() + '%');
+        this.renderer.setStyle(this.activeTrack.nativeElement, 'width', (activeTrackWith).toString() + '%');
+        this.value.emit(value);
       }
-      );
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.sliderSubscription.unsubscribe();
   }
 }
